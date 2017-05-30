@@ -16,7 +16,7 @@ import java.util.List;
  * Created by edgar on 17-5-28.
  */
 class IdGeneratorImpl implements IdGenerator {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IdGeneratorImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IdGenerator.class);
   private final RedisClient redisClient;
 
   private final int seqBit;
@@ -46,8 +46,6 @@ class IdGeneratorImpl implements IdGenerator {
   private final int shardLeftBit;
 
   private String luaScript;
-
-  private Vertx vertx;
 
   IdGeneratorImpl(Vertx vertx, RedisClient redisClient, IdGeneratorOptions options, Future<Void> completed) {
     this.redisClient = redisClient;
