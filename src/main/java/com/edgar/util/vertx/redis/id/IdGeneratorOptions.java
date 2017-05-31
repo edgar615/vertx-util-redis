@@ -24,15 +24,17 @@ public class IdGeneratorOptions {
     return seqBit;
   }
 
-  public void setSeqBit(int seqBit) {
+  public IdGeneratorOptions setSeqBit(int seqBit) {
     this.seqBit = seqBit;
+    return this;
   }
 
   public int getServerBit() {
     return serverBit;
   }
 
-  public void setServerBit(int serverBit) {
+  public IdGeneratorOptions setServerBit(int serverBit) {
     this.serverBit = serverBit;
+    return this;
   }
 }
