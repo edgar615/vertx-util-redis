@@ -1,7 +1,9 @@
 *.class
 */target/
+*/.vertx/
 *.iml
 .idea/
+.vertx/
 */*.log
 *.log
 
