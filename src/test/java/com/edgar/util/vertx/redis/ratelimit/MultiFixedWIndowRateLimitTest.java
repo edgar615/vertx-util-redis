@@ -15,15 +15,13 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by edgar on 17-5-28.
  */
 @RunWith(VertxUnitRunner.class)
-public class SlidingRateLimitTest {
+public class MultiFixedWIndowRateLimitTest {
 
   private RedisClient redisClient;
 
@@ -33,11 +31,11 @@ public class SlidingRateLimitTest {
   public void setUp() {
     vertx = Vertx.vertx();
     redisClient = RedisClient.create(vertx, new RedisOptions()
-            .setHost("10.11.0.31"));
-//    AtomicBoolean complete = new AtomicBoolean();
-//    RedisDeletePattern.create(redisClient)
-//        .deleteByPattern("rate.limit*", ar -> {complete.set(true);});
-//    Awaitility.await().until(() -> complete.get());
+    .setHost("127.0.0.1"));
+    AtomicBoolean complete = new AtomicBoolean();
+    RedisDeletePattern.create(redisClient)
+        .deleteByPattern("rate.limit*", ar -> {complete.set(true);});
+    Awaitility.await().until(() -> complete.get());
   }
 
   @Test
@@ -51,19 +49,22 @@ public class SlidingRateLimitTest {
         complete.set(false);
       }
     });
-    SlidingRateLimit rateLimit = new SlidingRateLimit(vertx, redisClient, future);
+    MultiFixedWIndowRateLimit rateLimit = new MultiFixedWIndowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
-    AtomicInteger req = new AtomicInteger();
+    FixedWindowRateLimitOptions limit5 = new FixedWindowRateLimitOptions("test").setLimit(5).setInterval(10);
+    FixedWindowRateLimitOptions limit1 = new FixedWindowRateLimitOptions("test10").setLimit(3).setInterval(5);
+    List<FixedWindowRateLimitOptions> params = new ArrayList<>();
+    params.add(limit5);
+    params.add(limit1);
     List<RateLimitResponse> result = new ArrayList<>();
-    for (int i = 0; i < 6; i ++) {
-      rateLimit.rateLimit("test", 5, 60, 5, ar -> {
-        req.incrementAndGet();
+    for (int i = 0; i < 4; i ++) {
+      rateLimit.rateLimit(params, ar -> {
+        System.out.println(ar.result());
         result.add(ar.result());
       });
     }
-    Awaitility.await().until(() -> req.get() == 6);
-    System.out.println(result);
+    Awaitility.await().until(() -> result.size() == 4);
+    Assert.assertEquals(3l, result.stream().filter(resp -> resp.passed()).count());
 
-    Assert.assertEquals(5l, result.stream().filter(resp -> resp.passed()).count());
   }
 }

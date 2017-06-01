@@ -56,7 +56,7 @@ class IdGeneratorImpl implements IdGenerator {
     this.shardMask = -1 ^ (-1 << shardBit);
     this.timeLeftBit = seqBit + shardBit;
     this.shardLeftBit = seqBit;
-    vertx.fileSystem().readFile("id-generation.lua", res -> {
+    vertx.fileSystem().readFile("id_generation.lua", res -> {
       if (res.failed()) {
         completed.fail(res.cause());
         return;
@@ -64,10 +64,10 @@ class IdGeneratorImpl implements IdGenerator {
       redisClient.scriptLoad(res.result().toString(), ar -> {
         if (ar.succeeded()) {
           luaScript = ar.result();
-          LOGGER.info("load id-generation.lua succeeded");
+          LOGGER.info("load id_generation.lua succeeded");
           completed.complete();
         } else {
-          LOGGER.error("load id-generation.lua failed", ar.cause());
+          LOGGER.error("load id_generation.lua failed", ar.cause());
           completed.fail(ar.cause());
         }
       });
@@ -108,7 +108,7 @@ class IdGeneratorImpl implements IdGenerator {
       return;
     }
     if (luaScript == null) {
-      handler.handle(Future.failedFuture("id-generation.lua is not loaded yet"));
+      handler.handle(Future.failedFuture("id_generation.lua is not loaded yet"));
       return;
     }
     List<String> keys = new ArrayList<>();

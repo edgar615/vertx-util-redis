@@ -13,5 +13,5 @@ end
 
 local ttl = redis.call("ttl", key)
 local remaining = math.max(limit - current, 0);
---返回值一次为：是否通过0或1，最大请求数，剩余令牌,请求时间，限流窗口重置时间
+--返回值为：是否通过0或1，最大请求数，剩余令牌,限流窗口重置时间
 return {limit - current >= 0, limit, remaining, ttl}

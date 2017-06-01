@@ -16,16 +16,16 @@ import java.util.List;
 /**
  * Created by edgar on 17-5-29.
  */
-public class SlidingRateLimit {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SlidingRateLimit.class);
+public class SlidingWindowRateLimit {
+  private static final Logger LOGGER = LoggerFactory.getLogger(SlidingWindowRateLimit.class);
 
   private final RedisClient redisClient;
 
   private String luaScript;
 
-  public SlidingRateLimit(Vertx vertx, RedisClient redisClient, Future<Void> completed) {
+  public SlidingWindowRateLimit(Vertx vertx, RedisClient redisClient, Future<Void> completed) {
     this.redisClient = redisClient;
-    vertx.fileSystem().readFile("sliding-ratelimit.lua", res -> {
+    vertx.fileSystem().readFile("sliding_window_ratelimit.lua", res -> {
       if (res.failed()) {
         completed.fail(res.cause());
         return;
@@ -33,11 +33,11 @@ public class SlidingRateLimit {
       redisClient.scriptLoad(res.result().toString(), ar -> {
         if (ar.succeeded()) {
           luaScript = ar.result();
-          LOGGER.info("load sliding-ratelimit.lua succeeded");
+          LOGGER.info("load sliding_window_ratelimit.lua succeeded");
           completed.complete();
         } else {
           ar.cause().printStackTrace();
-          LOGGER.error("load sliding-ratelimit.lua failed", ar.cause());
+          LOGGER.error("load sliding_window_ratelimit.lua failed", ar.cause());
           completed.fail(ar.cause());
         }
       });
@@ -47,24 +47,20 @@ public class SlidingRateLimit {
   /**
    * 限流
    *
-   * @param subject   主题
-   * @param limit     　限流大小
-   * @param interval  　限流间隔，单位秒
-   * @param precision 每个小桶的精度
+   * @param rateLimit 限流设置
    * @param handler   　回调
    */
-  public void rateLimit(String subject, long limit, long interval,
-                        long precision, Handler<AsyncResult<RateLimitResponse>> handler) {
+  public void rateLimit(SlidingWindowRateLimitOptions rateLimit, Handler<AsyncResult<RateLimitResponse>> handler) {
     if (luaScript == null) {
-      handler.handle(Future.failedFuture("sliding-ratelimit.lua is not loaded yet"));
+      handler.handle(Future.failedFuture("sliding_window_ratelimit.lua is not loaded yet"));
       return;
     }
     List<String> keys = new ArrayList<>();
     List<String> args = new ArrayList<>();
-    args.add(subject);
-    args.add(limit + "");
-    args.add(interval + "");
-    args.add(precision + "");
+    args.add(rateLimit.getSubject());
+    args.add(rateLimit.getLimit() + "");
+    args.add(rateLimit.getInterval() + "");
+    args.add(rateLimit.getPrecision() + "");
     args.add(Instant.now().getEpochSecond() + "");
     redisClient.evalsha(luaScript, keys, args, ar -> {
       if (ar.failed()) {

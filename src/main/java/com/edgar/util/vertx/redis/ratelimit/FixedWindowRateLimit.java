@@ -5,7 +5,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,16 +16,16 @@ import java.util.List;
 /**
  * Created by edgar on 17-5-29.
  */
-public class SimpleRateLimit {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleRateLimit.class);
+public class FixedWindowRateLimit {
+  private static final Logger LOGGER = LoggerFactory.getLogger(FixedWindowRateLimit.class);
 
   private final RedisClient redisClient;
 
   private String luaScript;
 
-  public SimpleRateLimit(Vertx vertx, RedisClient redisClient, Future<Void> completed) {
+  public FixedWindowRateLimit(Vertx vertx, RedisClient redisClient, Future<Void> completed) {
     this.redisClient = redisClient;
-    vertx.fileSystem().readFile("simple-ratelimit.lua", res -> {
+    vertx.fileSystem().readFile("fixed_window_ratelimit.lua", res -> {
       if (res.failed()) {
         completed.fail(res.cause());
         return;
@@ -34,11 +33,11 @@ public class SimpleRateLimit {
       redisClient.scriptLoad(res.result().toString(), ar -> {
         if (ar.succeeded()) {
           luaScript = ar.result();
-          LOGGER.info("load simple-ratelimit.lua succeeded");
+          LOGGER.info("load fixed_window_ratelimit.lua succeeded");
           completed.complete();
         } else {
           ar.cause().printStackTrace();
-          LOGGER.error("load simple-ratelimit.lua failed", ar.cause());
+          LOGGER.error("load fixed_window_ratelimit.lua failed", ar.cause());
           completed.fail(ar.cause());
         }
       });
@@ -47,21 +46,19 @@ public class SimpleRateLimit {
 
   /**
    * 限流
-   * @param subject 主题
-   * @param limit　限流大小
-   * @param interval　限流间隔，单位秒
+   * @param rateLimit 限流设置
    * @param handler　回调
    */
-  public void rateLimit(String subject, long limit, long interval, Handler<AsyncResult<RateLimitResponse>> handler) {
+  public void rateLimit(FixedWindowRateLimitOptions rateLimit, Handler<AsyncResult<RateLimitResponse>> handler) {
     if (luaScript == null) {
-      handler.handle(Future.failedFuture("simple-ratelimit.lua is not loaded yet"));
+      handler.handle(Future.failedFuture("fixed_window_ratelimit.lua is not loaded yet"));
       return;
     }
     List<String> keys = new ArrayList<>();
     List<String> args = new ArrayList<>();
-    args.add(subject);
-    args.add(limit + "");
-    args.add(interval + "");
+    args.add(rateLimit.getSubject());
+    args.add(rateLimit.getLimit() + "");
+    args.add(rateLimit.getInterval() + "");
     args.add(Instant.now().getEpochSecond() + "");
     redisClient.evalsha(luaScript, keys, args, ar -> {
       if (ar.failed()) {
