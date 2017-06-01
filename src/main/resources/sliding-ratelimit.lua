@@ -1,97 +1,44 @@
+local subject = "rate.limit." .. ARGV[1] --限流KEY
+local limit = tonumber(ARGV[2]) --限流窗口允许的最大请求数
+local interval = ARGV[3] --限流间隔,秒
+local precision = ARGV[4]
+local now = ARGV[5] --当前Unix时间戳
+--桶的大小不能超过限流的间隔
+precision = math.min(precision, interval)
+--桶的数量
+local bucket_num = math.ceil(interval / precision)
+--计算当前时间在桶中的key
+local bucket_key = math.floor(now / precision)
 
---[[
- [[duration 1, limit 1], [duration 2, limit 2, precision 2], ...]
+--当前请求加1
+local current = tonumber(redis.call("hincrby", subject, bucket_key, 1))
+--需要删除的key
+local old_key = bucket_key - bucket_num -1
+--请求总数
+local max_req = 0;
 
-     <duration>:<precision>:o --> <timestamp of oldest entry>
-    <duration>:<precision>: --> <count of successful requests in this window>
-    <duration>:<precision>:<ts> --> <count of successful requests in this bucket>
+local reset = 0;
 
--- ]]
-local limits = cjson.decode(ARGV[1])
-local now = tonumber(ARGV[2])
-local weight = tonumber(ARGV[3] or '1')
-local longest_duration = limits[1][1] or 0 --最大的限流间隔，先取第一个间隔，之后会遍历限流参数来计算这个值
-local saved_keys = {}
--- handle cleanup and limit checks
-for i, limit in ipairs(limits) do
-
-    --计算最大的间隔
-    local duration = limit[1]
-    longest_duration = math.max(longest_duration, duration)
-    -- 计算限流的精度，不能超过限流的间隔
-    local precision = limit[3] or duration
-    precision = math.min(precision, duration)
-    local blocks = math.ceil(duration / precision)
-    local saved = {}
-    table.insert(saved_keys, saved)
-
-    --计算当前时间位于哪个区域
-    saved.block_id = math.floor(now / precision)
-    --
-    saved.trim_before = saved.block_id - blocks + 1
-
-    --<duration>:<precision>: --> <count of successful requests in this window>
-    saved.count_key = duration .. ':' .. precision .. ':'
-
-    --<duration>:<precision>:o --> 上次请求的时间
-    saved.ts_key = saved.count_key .. 'o'
-    for j, key in ipairs(KEYS) do
-
-        --如果上次请求的时间>now，直接返回
-        local old_ts = redis.call('HGET', key, saved.ts_key)
-        old_ts = old_ts and tonumber(old_ts) or saved.trim_before
-        if old_ts > now then
-            -- don't write in the past
-            return 1
-        end
-
-        -- discover what needs to be cleaned up
-        local decr = 0
-        local dele = {}
-        local trim = math.min(saved.trim_before, old_ts + blocks)
-        for old_block = old_ts, trim - 1 do
-            local bkey = saved.count_key .. old_block
-            local bcount = redis.call('HGET', key, bkey)
-            if bcount then
-                decr = decr + tonumber(bcount)
-                table.insert(dele, bkey)
-            end
-        end
-
-        -- handle cleanup
-        local cur
-        if #dele > 0 then
-            redis.call('HDEL', key, unpack(dele))
-            cur = redis.call('HINCRBY', key, saved.count_key, -decr)
-        else
-            cur = redis.call('HGET', key, saved.count_key)
-        end
-
-        -- check our limits
-        if tonumber(cur or '0') + weight > limit[2] then
-            return 1
+local subject_hash = redis.call("hgetall", subject) or {}
+for i = 1, #subject_hash, 2 do
+    local ts_key = tonumber(subject_hash[i])
+    if ts_key < old_key then
+        redis.call("hdel", subject, ts_key)
+    else
+        local req_num =tonumber(subject_hash[i + 1])
+        max_req = max_req +  req_num
+        if req_num ~= 0 and reset == 0 then
+            reset = (math.floor(i / 2) +1) * precision
         end
     end
 end
 
--- there is enough resources, update the counts
-for i, limit in ipairs(limits) do
-    local saved = saved_keys[i]
-
-    for j, key in ipairs(KEYS) do
-        -- update the current timestamp, count, and bucket count
-        redis.call('HSET', key, saved.ts_key, saved.trim_before)
-        redis.call('HINCRBY', key, saved.count_key, weight)
-        redis.call('HINCRBY', key, saved.count_key .. saved.block_id, weight)
-    end
+--如果超过限流，需要将bucket_key对应的数据在减1
+if max_req > limit then
+    tonumber(redis.call("hincrby", subject, bucket_key, 1))
+    return {0, limit, 0, interval - reset}
 end
 
--- We calculated the longest-duration limit so we can EXPIRE
--- the whole HASH for quick and easy idle-time cleanup :)
-if longest_duration > 0 then
-    for _, key in ipairs(KEYS) do
-        redis.call('EXPIRE', key, longest_duration)
-    end
-end
-
-return 0
+-- interval+precision之后过期
+redis.call("expire", subject, interval+precision)
+return {1, limit, limit - max_req, interval - reset}
