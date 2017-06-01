@@ -3,10 +3,10 @@ package com.edgar.util.vertx.redis.ratelimit;
 import com.edgar.util.vertx.redis.RedisDeletePattern;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.redis.RedisClient;
+import io.vertx.redis.RedisOptions;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
@@ -32,7 +32,8 @@ public class SimpleRateLimitTest {
   @Before
   public void setUp() {
     vertx = Vertx.vertx();
-    redisClient = RedisClient.create(vertx);
+    redisClient = RedisClient.create(vertx, new RedisOptions()
+            .setHost("10.11.0.31"));
     AtomicBoolean complete = new AtomicBoolean();
     RedisDeletePattern.create(redisClient)
         .deleteByPattern("rate.limit*", ar -> {complete.set(true);});
@@ -55,7 +56,7 @@ public class SimpleRateLimitTest {
     AtomicInteger req = new AtomicInteger();
     List<RateLimitResponse> result = new ArrayList<>();
     for (int i = 0; i < 6; i ++) {
-      rateLimit.req("test", 5, 5, ar -> {
+      rateLimit.rateLimit("test", 5, 5, ar -> {
         req.incrementAndGet();
         result.add(ar.result());
       });
@@ -73,7 +74,7 @@ public class SimpleRateLimitTest {
     AtomicInteger req2 = new AtomicInteger();
     List<RateLimitResponse> result2 = new ArrayList<>();
     for (int i = 0; i < 6; i ++) {
-      rateLimit.req("test",5, 5, ar -> {
+      rateLimit.rateLimit("test", 5, 5, ar -> {
         req2.incrementAndGet();
         result2.add(ar.result());
       });
@@ -90,7 +91,7 @@ public class SimpleRateLimitTest {
     AtomicInteger req3 = new AtomicInteger();
     List<RateLimitResponse> result3 = new ArrayList<>();
     for (int i = 0; i < 6; i ++) {
-      rateLimit.req("test", 3, 5, ar -> {
+      rateLimit.rateLimit("test", 3, 5, ar -> {
         req3.incrementAndGet();
         result3.add(ar.result());
       });

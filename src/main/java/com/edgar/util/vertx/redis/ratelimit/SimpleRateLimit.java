@@ -52,14 +52,14 @@ public class SimpleRateLimit {
    * @param interval　限流间隔，单位秒
    * @param handler　回调
    */
-  public void req(String subject,long limit, long interval, Handler<AsyncResult<RateLimitResponse>> handler) {
+  public void rateLimit(String subject, long limit, long interval, Handler<AsyncResult<RateLimitResponse>> handler) {
     if (luaScript == null) {
       handler.handle(Future.failedFuture("simple-ratelimit.lua is not loaded yet"));
       return;
     }
     List<String> keys = new ArrayList<>();
-    keys.add(subject);
     List<String> args = new ArrayList<>();
+    args.add(subject);
     args.add(limit + "");
     args.add(interval + "");
     args.add(Instant.now().getEpochSecond() + "");

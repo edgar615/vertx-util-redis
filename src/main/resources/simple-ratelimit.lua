@@ -1,9 +1,9 @@
-local key = "rate.limit." .. KEYS[1] --限流KEY
-local limit = tonumber(ARGV[1]) --限流窗口允许的最大请求数
-local interval = ARGV[2] --限流间隔,毫秒
-local time = ARGV[3] --当前毫秒数
+local key = "rate.limit." .. ARGV[1] --限流KEY
+local limit = tonumber(ARGV[2]) --限流窗口允许的最大请求数
+local interval = ARGV[3] --限流间隔,毫秒
+local now = ARGV[4] --当前毫秒数
 --计算key
-local subject = math.floor(time / interval)
+local subject = math.floor(now / interval)
 key = key .. "." ..subject;
 
 local current = tonumber(redis.call("incr", key))
