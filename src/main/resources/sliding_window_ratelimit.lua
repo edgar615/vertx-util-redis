@@ -1,16 +1,34 @@
 local subject = "rate.limit." .. ARGV[1] --限流KEY
 local limit = tonumber(ARGV[2]) --限流窗口允许的最大请求数
-local interval = ARGV[3] --限流间隔,秒
-local precision = ARGV[4]
-local now = ARGV[5] --当前Unix时间戳
+local interval = tonumber(ARGV[3]) --限流间隔,秒
+local precision = tonumber(ARGV[4])
+local now = tonumber(ARGV[5]) --当前Unix时间戳
 --桶的大小不能超过限流的间隔
-precision = math.min(precision, interval)
---桶的数量
-local bucket_num = math.ceil(interval / precision)
---计算当前时间在桶中的key
-local bucket_key = math.floor(now / precision)
+
+if  precision > interval - 1 then
+    redis.log(redis.LOG_NOTICE, 'precision < interval must to be met')
+    return redis.error_reply('precision < interval must to be met')
+end
+
+if interval % precision ~= 0 then
+    redis.log(redis.LOG_NOTICE, 'interval % precision == 0 must to be met')
+    return redis.error_reply('interval % precision == 0 must to be met')
+end
+
 --重新计算限流的KEY，避免传入相同的key，不同的间隔导致冲突
 subject = subject .. ':l:' .. limit .. ':i:' .. interval .. ':p:' .. precision
+
+--桶的数量
+local bucket_num = math.ceil(interval / precision)
+--计算当前时间在桶中的key，通过math.floor(now / precision)算出的key并不准确，有时候会有偏移，所以改为使用当前请求时间与第一次请求的时间来计算桶的位置
+--local bucket_key = math.floor(now / precision)
+
+local oldest_req_key = subject .. ':o'
+local oldest_req = tonumber(redis.call('GET', oldest_req_key)) or 0 --最早请求时间，默认为当前时间
+local bucket_key = math.floor(now / precision)
+if oldest_req > 0 and now > oldest_req then
+    bucket_key = math.floor((now - oldest_req) / precision) +math.floor(oldest_req / precision)
+end
 
 --判断当前桶是否存在
 local current_bucket = redis.call("hexists", subject, bucket_key)
@@ -41,6 +59,7 @@ end
 if old_ts == 0 then
     old_ts = subject_hash[1]
 end
+redis.log(redis.LOG_NOTICE, oldest_req .. ' ' .. now .. ' ' .. bucket_key .. ' ' .. max_req)
 local reset = interval - (subject_hash[#subject_hash -1] -old_ts) * precision;
 reset = math.max(reset, precision)
 if max_req >= limit then
@@ -52,5 +71,11 @@ end
 local current = tonumber(redis.call("hincrby", subject, bucket_key, 1))
 -- interval+precision之后过期
 redis.call("expire", subject, interval+precision)
+if oldest_req == 0 then
+    redis.call("setex", oldest_req_key,interval+precision , now )
+else
+    redis.call("expire", oldest_req_key,interval+precision  )
+end
+
 --返回值为：是否通过0或1，最大请求数，剩余令牌,限流窗口重置时间
 return {1, limit, limit - max_req - 1, reset}
