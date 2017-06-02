@@ -4,16 +4,7 @@ local interval = tonumber(ARGV[3]) --限流间隔,秒
 local precision = tonumber(ARGV[4])
 local now = tonumber(ARGV[5]) --当前Unix时间戳
 --桶的大小不能超过限流的间隔
-
-if  precision > interval - 1 then
-    redis.log(redis.LOG_NOTICE, 'precision < interval must to be met')
-    return redis.error_reply('precision < interval must to be met')
-end
-
-if interval % precision ~= 0 then
-    redis.log(redis.LOG_NOTICE, 'interval % precision == 0 must to be met')
-    return redis.error_reply('interval % precision == 0 must to be met')
-end
+precision = math.min(precision, interval)
 
 --重新计算限流的KEY，避免传入相同的key，不同的间隔导致冲突
 subject = subject .. ':l:' .. limit .. ':i:' .. interval .. ':p:' .. precision
@@ -24,10 +15,12 @@ local bucket_num = math.ceil(interval / precision)
 --local bucket_key = math.floor(now / precision)
 
 local oldest_req_key = subject .. ':o'
-local oldest_req = tonumber(redis.call('GET', oldest_req_key)) or 0 --最早请求时间，默认为当前时间
+local oldest_req = tonumber(redis.call('GET', oldest_req_key)) or 0 --最早请求时间，默认为0
 local bucket_key = math.floor(now / precision)
+local reset_time = precision --重置时间
 if oldest_req > 0 and now > oldest_req then
     bucket_key = math.floor((now - oldest_req) / precision) +math.floor(oldest_req / precision)
+    reset_time = precision - (now - oldest_req) % precision;
 end
 
 --判断当前桶是否存在
@@ -55,16 +48,9 @@ for i = 1, #subject_hash, 2 do
         end
     end
 end
---　计算桶的重置时间
-if old_ts == 0 then
-    old_ts = subject_hash[1]
-end
-redis.log(redis.LOG_NOTICE, oldest_req .. ' ' .. now .. ' ' .. bucket_key .. ' ' .. max_req)
-local reset = interval - (subject_hash[#subject_hash -1] -old_ts) * precision;
-reset = math.max(reset, precision)
 if max_req >= limit then
     --返回值为：是否通过0或1，最大请求数，剩余令牌,限流窗口重置时间
-    return {0, limit, 0, reset}
+    return {0, limit, 0, reset_time}
 end
 
 -- 当前请求+1
@@ -78,4 +64,4 @@ else
 end
 
 --返回值为：是否通过0或1，最大请求数，剩余令牌,限流窗口重置时间
-return {1, limit, limit - max_req - 1, reset}
+return {1, limit, limit - max_req - 1, reset_time}
