@@ -19,9 +19,9 @@ local logical_shard_id_key = 'id-generator-logical-shard-id'
 
 local min_logical_shard_id = 0 --最小的分片ID
 
-local max_sequence = tonumber(KEYS[1]) --自增序列的最大值，建议4095
-local max_logical_shard_id = tonumber(KEYS[2])--最大的分片ID，建议1023
-local num_ids = tonumber(KEYS[3]) --一次获取多少个id,不应该超过过max_sequence
+local max_sequence = tonumber(ARGV[1]) --自增序列的最大值，建议4095
+local max_logical_shard_id = tonumber(ARGV[2])--最大的分片ID，建议1023
+local num_ids = tonumber(ARGV[3]) --一次获取多少个id,不应该超过过max_sequence
 
 --如果存在锁标识说明当前毫秒下的自增序列已经分配完毕，必须等到下一个毫秒才能分配新的序列
 if redis.call('EXISTS', lock_key) == 1 then

@@ -8,7 +8,7 @@ local passed = true;
 for i, rate_limit in ipairs(rate_limits) do
     local limit = rate_limit[2]
     local interval = rate_limit[3]
-    local limit_key = prefix_key .. rate_limit[1] .. "." .. math.floor(now / interval)
+    local limit_key = prefix_key .. rate_limit[1] .. ':l:' .. limit .. ':i:' .. interval .. ':' .. math.floor(now / interval)
 
     local requested_num = tonumber(redis.call('GET', limit_key)) or 0 --请求数，默认为0
     if requested_num >= limit then

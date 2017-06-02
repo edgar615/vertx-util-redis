@@ -9,11 +9,8 @@ precision = math.min(precision, interval)
 --重新计算限流的KEY，避免传入相同的key，不同的间隔导致冲突
 subject = subject .. ':l:' .. limit .. ':i:' .. interval .. ':p:' .. precision
 
---桶的数量
+--桶的数量，与位置
 local bucket_num = math.ceil(interval / precision)
---计算当前时间在桶中的key，通过math.floor(now / precision)算出的key并不准确，有时候会有偏移，所以改为使用当前请求时间与第一次请求的时间来计算桶的位置
---local bucket_key = math.floor(now / precision)
-
 local oldest_req_key = subject .. ':o'
 local oldest_req = tonumber(redis.call('GET', oldest_req_key)) or 0 --最早请求时间，默认为0
 local bucket_key = math.floor(now / precision)
@@ -33,7 +30,6 @@ end
 local old_key = bucket_key - bucket_num + 1
 --请求总数
 local max_req = 0;
-local old_ts = 0
 local subject_hash = redis.call("hgetall", subject) or {}
 for i = 1, #subject_hash, 2 do
     local ts_key = tonumber(subject_hash[i])
@@ -42,10 +38,6 @@ for i = 1, #subject_hash, 2 do
     else
         local req_num =tonumber(subject_hash[i + 1])
         max_req = max_req +  req_num
-        -- 如果req_num>0,
-        if req_num > 0 and old_ts == 0 then
-            old_ts = subject_hash[i]
-        end
     end
 end
 if max_req >= limit then

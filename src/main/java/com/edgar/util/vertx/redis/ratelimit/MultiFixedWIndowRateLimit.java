@@ -1,5 +1,6 @@
 package com.edgar.util.vertx.redis.ratelimit;
 
+import com.edgar.util.vertx.redis.AbstractLuaEvaluator;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -16,32 +17,12 @@ import java.util.List;
 /**
  * Created by edgar on 17-5-29.
  */
-public class MultiFixedWIndowRateLimit {
+public class MultiFixedWIndowRateLimit extends AbstractLuaEvaluator {
   private static final Logger LOGGER = LoggerFactory.getLogger(MultiFixedWIndowRateLimit.class);
 
-  private final RedisClient redisClient;
-
-  private String luaScript;
 
   public MultiFixedWIndowRateLimit(Vertx vertx, RedisClient redisClient, Future<Void> completed) {
-    this.redisClient = redisClient;
-    vertx.fileSystem().readFile("multi_fixed_window_ratelimit.lua", res -> {
-      if (res.failed()) {
-        completed.fail(res.cause());
-        return;
-      }
-      redisClient.scriptLoad(res.result().toString(), ar -> {
-        if (ar.succeeded()) {
-          luaScript = ar.result();
-          LOGGER.info("load multi_fixed_window_ratelimit.lua succeeded");
-          completed.complete();
-        } else {
-          ar.cause().printStackTrace();
-          LOGGER.error("load multi_fixed_window_ratelimit.lua failed", ar.cause());
-          completed.fail(ar.cause());
-        }
-      });
-    });
+    super(vertx, redisClient, "multi_fixed_window_ratelimit.lua", completed);
   }
 
   /**
@@ -51,10 +32,6 @@ public class MultiFixedWIndowRateLimit {
    * @param handler 　回调
    */
   public void rateLimit(List<FixedWindowRateLimitOptions> limits, Handler<AsyncResult<RateLimitResponse>> handler) {
-    if (luaScript == null) {
-      handler.handle(Future.failedFuture("multi_fixed_window_ratelimit.lua is not loaded yet"));
-      return;
-    }
     JsonArray limitArray;
     try {
       limitArray = checkArgument(limits);
@@ -66,20 +43,13 @@ public class MultiFixedWIndowRateLimit {
     List<String> args = new ArrayList<>();
     args.add(limitArray.encode());
     args.add(Instant.now().getEpochSecond() + "");
-    redisClient.evalsha(luaScript, keys, args, ar -> {
+    evaluate(keys, args, ar -> {
       if (ar.failed()) {
-        ar.cause().printStackTrace();
-        LOGGER.error("eval multi_fixed_window_ratelimit failed", ar.cause());
-        handler.handle(Future.failedFuture("evalsha failed"));
+        LOGGER.error("rateLimit failed", ar.cause());
+        handler.handle(Future.failedFuture("rateLimit failed"));
         return;
       }
-      JsonArray result = ar.result();
-      Long value = result.getLong(0) == null ? 0 : result.getLong(0);
-      Long maxReq = result.getLong(1);
-      Long remaining = result.getLong(2);
-      Long resetSeconds = result.getLong(3);
-      handler.handle(Future.succeededFuture(
-          RateLimitResponse.create(value == 1, maxReq, remaining, resetSeconds)));
+      RateLimitUtils.create(ar.result(), handler);
     });
   }
 

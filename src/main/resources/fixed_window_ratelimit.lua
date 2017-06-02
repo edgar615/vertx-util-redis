@@ -4,7 +4,7 @@ local interval = ARGV[3] --限流间隔,秒
 local now = ARGV[4] --当前Unix时间戳
 --计算key
 local subject = math.floor(now / interval)
-key = key .. "." ..subject;
+key = key .. ':l:' .. limit .. ':i:' .. interval .. ':' ..subject;
 
 local current = tonumber(redis.call("incr", key))
 if current == 1 then
