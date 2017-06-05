@@ -55,7 +55,7 @@ public class SlidingWindowRateLimitTest {
     SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResponse> result = new ArrayList<>();
+    List<RateLimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
     SlidingWindowRateLimitOptions options =
         new SlidingWindowRateLimitOptions(subject).setLimit(1).setInterval(5)
@@ -113,7 +113,7 @@ public class SlidingWindowRateLimitTest {
     SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResponse> result = new ArrayList<>();
+    List<RateLimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
     SlidingWindowRateLimitOptions options =
             new SlidingWindowRateLimitOptions(subject).setLimit(3).setInterval(5)
@@ -176,7 +176,7 @@ public class SlidingWindowRateLimitTest {
     SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResponse> result = new ArrayList<>();
+    List<RateLimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
     SlidingWindowRateLimitOptions options =
             new SlidingWindowRateLimitOptions(subject).setLimit(3).setInterval(5)

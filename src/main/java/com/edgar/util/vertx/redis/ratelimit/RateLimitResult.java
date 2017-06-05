@@ -3,7 +3,7 @@ package com.edgar.util.vertx.redis.ratelimit;
 /**
  * Created by edgar on 17-5-31.
  */
-public class RateLimitResponse {
+public class RateLimitResult {
 
   /**
    * 是否通过
@@ -26,15 +26,15 @@ public class RateLimitResponse {
    */
   private final long resetSeconds;
 
-  private RateLimitResponse(boolean passed, long limit, long remaining, long resetSeconds) {
+  private RateLimitResult(boolean passed, long limit, long remaining, long resetSeconds) {
     this.passed = passed;
     this.limit = limit;
     this.remaining = remaining;
     this.resetSeconds = resetSeconds;
   }
 
-  public static RateLimitResponse create(boolean passed, long limit, long remaining, long resetSeconds) {
-    return new RateLimitResponse(passed, limit, remaining, resetSeconds);
+  public static RateLimitResult create(boolean passed, long limit, long remaining, long resetSeconds) {
+    return new RateLimitResult(passed, limit, remaining, resetSeconds);
   }
 
   public boolean passed() {
@@ -55,7 +55,7 @@ public class RateLimitResponse {
 
   @Override
   public String toString() {
-    return "RateLimitResponse{" +
+    return "RateLimitResult{" +
         "passed=" + passed +
         ", limit=" + limit +
         ", remaining=" + remaining +

@@ -5,7 +5,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
 import io.vertx.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,7 @@ public class FixedWindowRateLimit extends AbstractLuaEvaluator {
    * @param rateLimit 限流设置
    * @param handler　回调
    */
-  public void rateLimit(FixedWindowRateLimitOptions rateLimit, Handler<AsyncResult<RateLimitResponse>> handler) {
+  public void rateLimit(FixedWindowRateLimitOptions rateLimit, Handler<AsyncResult<RateLimitResult>> handler) {
     List<String> keys = new ArrayList<>();
     List<String> args = new ArrayList<>();
     args.add(rateLimit.getSubject());

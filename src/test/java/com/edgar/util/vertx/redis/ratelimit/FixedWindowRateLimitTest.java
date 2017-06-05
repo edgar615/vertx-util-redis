@@ -56,7 +56,7 @@ public class FixedWindowRateLimitTest {
     FixedWindowRateLimit rateLimit = new FixedWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResponse> result = new ArrayList<>();
+    List<RateLimitResult> result = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       rateLimit.rateLimit(new FixedWindowRateLimitOptions("test").setLimit(5).setInterval(8), ar -> {
         req.incrementAndGet();
@@ -74,7 +74,7 @@ public class FixedWindowRateLimitTest {
 //      e.printStackTrace();
 //    }
     AtomicInteger req2 = new AtomicInteger();
-    List<RateLimitResponse> result2 = new ArrayList<>();
+    List<RateLimitResult> result2 = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       rateLimit.rateLimit(new FixedWindowRateLimitOptions("test").setLimit(5).setInterval(8), ar -> {
         req2.incrementAndGet();
@@ -91,7 +91,7 @@ public class FixedWindowRateLimitTest {
       e.printStackTrace();
     }
     AtomicInteger req3 = new AtomicInteger();
-    List<RateLimitResponse> result3 = new ArrayList<>();
+    List<RateLimitResult> result3 = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       rateLimit.rateLimit(new FixedWindowRateLimitOptions("test").setLimit(3).setInterval(5), ar -> {
         req3.incrementAndGet();

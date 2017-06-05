@@ -1,20 +1,14 @@
 package com.edgar.util.vertx.redis;
 
-import com.edgar.util.vertx.redis.id.IdGeneratorOptions;
-import com.edgar.util.vertx.redis.ratelimit.RateLimitResponse;
-import com.edgar.util.vertx.redis.ratelimit.SlidingWindowRateLimitOptions;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.impl.Arguments;
 import io.vertx.core.json.JsonArray;
 import io.vertx.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 /**

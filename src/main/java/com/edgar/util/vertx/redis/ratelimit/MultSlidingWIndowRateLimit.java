@@ -30,7 +30,7 @@ public class MultSlidingWIndowRateLimit extends AbstractLuaEvaluator {
    * @param limits  限流集合，必须包含三个元素:subject，limit,interval
    * @param handler 　回调
    */
-  public void rateLimit(List<SlidingWindowRateLimitOptions> limits, Handler<AsyncResult<RateLimitResponse>> handler) {
+  public void rateLimit(List<SlidingWindowRateLimitOptions> limits, Handler<AsyncResult<RateLimitResult>> handler) {
     JsonArray limitArray;
     try {
       limitArray = checkArgument(limits);

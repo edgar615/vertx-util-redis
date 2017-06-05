@@ -10,14 +10,14 @@ import io.vertx.core.json.JsonArray;
  */
 class RateLimitUtils {
 
-  static void create(JsonArray jsonArray, Handler<AsyncResult<RateLimitResponse>> handler) {
+  static void create(JsonArray jsonArray, Handler<AsyncResult<RateLimitResult>> handler) {
     try {
       Long value = jsonArray.getLong(0) == null ? 0 : jsonArray.getLong(0);
       Long maxReq = jsonArray.getLong(1);
       Long remaining = jsonArray.getLong(2);
       Long resetSeconds = jsonArray.getLong(3);
       handler.handle(Future.succeededFuture(
-          RateLimitResponse.create(value == 1, maxReq, remaining, resetSeconds)));
+              RateLimitResult.create(value == 1, maxReq, remaining, resetSeconds)));
     } catch (Exception e) {
       handler.handle(Future.failedFuture(e));
     }

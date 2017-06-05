@@ -56,7 +56,7 @@ public class MultiFixedWIndowRateLimitTest {
     List<FixedWindowRateLimitOptions> params = new ArrayList<>();
     params.add(limit5);
     params.add(limit1);
-    List<RateLimitResponse> result = new ArrayList<>();
+    List<RateLimitResult> result = new ArrayList<>();
     for (int i = 0; i < 4; i ++) {
       rateLimit.rateLimit(params, ar -> {
         System.out.println(ar.result());
