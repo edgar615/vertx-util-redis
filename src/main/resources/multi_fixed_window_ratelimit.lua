@@ -8,8 +8,8 @@ local passed = true;
 for i, rate_limit in ipairs(rate_limits) do
     local limit = rate_limit[2]
     local interval = rate_limit[3]
-    local limit_key = prefix_key .. rate_limit[1] .. ':l:' .. limit .. ':i:' .. interval .. ':' .. math.floor(now / interval)
-
+    local subject = math.floor(now / interval)
+    local limit_key =  prefix_key .. rate_limit[1] .. '.' .. subject .. '.' .. limit .. '.' .. interval
     local requested_num = tonumber(redis.call('GET', limit_key)) or 0 --请求数，默认为0
     if requested_num >= limit then
         passed = false
@@ -20,33 +20,35 @@ for i, rate_limit in ipairs(rate_limits) do
     end
 end
 
---如果通过，将所有的限流请求数加1，并返回第一个限流的规则
-if passed then
-    for key,value in ipairs(result) do
-        local limit_key = value[1]
-        local limit = value[2]
-        local interval = value[3]
+local summary = { }
+for key,value in ipairs(result) do
+    local limit_key = value[1]
+    local limit = value[2]
+    local interval = value[3]
+    if passed then
+        --如果通过, 将所有的限流请求数加1
         local current = tonumber(redis.call("incr", limit_key))
         if current == 1 then
             redis.call("expire", limit_key, interval)
         end
-        local ttl = redis.call("ttl", limit_key)
-        --添加两个值　剩余请求数　重置时间
-        table.insert(value,  math.max(limit - current, 0))
-        table.insert(value, ttl)
+        --添加两个值　是否通过0或1　剩余请求数
+        table.insert(summary, 1)
+        table.insert(summary, math.max(limit - current, 0))
+    else
+        local pass = value[5]
+        if not pass or pass == 0 then
+            table.insert(summary, 0)
+            table.insert(summary, 0)
+        else
+            table.insert(summary, 1)
+            table.insert(summary, value[4])
+        end
     end
-    --返回值为：是否通过0或1，最大请求数，剩余令牌,限流窗口重置时间
-    return {1, result[1][2], result[1][6], result[1][7]}
+    local ttl = redis.call("ttl", limit_key)
+    --添加两个值　最大请求数　重置时间
+    table.insert(summary, limit)
+    table.insert(summary, ttl)
 end
 
---如果未通过，返回第一个没通过的限流规则
-for key,value in ipairs(result) do
-    local pass = value[5]
-    local limit_key = value[1]
-    if not pass or pass == 0 then
-        local ttl = redis.call("ttl", limit_key)
-        --返回值为：是否通过0或1，最大请求数，剩余令牌,限流窗口重置时间
-        return {0, value[2], 0, ttl}
-    end
-end
-return redis.error_reply('ratelimt error.')
+--返回值为: 是否通过0或1, 剩余令牌, 最大请求数, 限流窗口重置时间 ,...
+return summary

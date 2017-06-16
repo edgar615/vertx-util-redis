@@ -34,7 +34,7 @@ public class SlidingWindowRateLimitTest {
   public void setUp() {
     vertx = Vertx.vertx();
     redisClient = RedisClient.create(vertx, new RedisOptions()
-            .setHost("127.0.0.1"));
+            .setHost("10.11.0.31"));
     AtomicBoolean complete = new AtomicBoolean();
     RedisDeletePattern.create(redisClient)
         .deleteByPattern("rate.limit*", ar -> {complete.set(true);});
@@ -42,7 +42,7 @@ public class SlidingWindowRateLimitTest {
   }
 
   @Test
-  public void testRateLimit3ReqPer5sWith1sPrecisionNoSleep(TestContext testContext) {
+  public void testRateLimit1ReqPer5sWith1sPrecision(TestContext testContext) {
     AtomicBoolean complete = new AtomicBoolean();
     Future<Void> future = Future.future();
     future.setHandler(ar -> {
@@ -55,10 +55,10 @@ public class SlidingWindowRateLimitTest {
     SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResult> result = new ArrayList<>();
+    List<LimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
-    SlidingWindowRateLimitOptions options =
-        new SlidingWindowRateLimitOptions(subject).setLimit(1).setInterval(5)
+    SlidingWindowRateLimitRule options =
+        new SlidingWindowRateLimitRule(subject).setLimit(1).setInterval(5)
             .setPrecision(1);
     for (int i = 0; i < 6; i ++) {
       rateLimit.rateLimit(options, ar -> {
@@ -74,28 +74,28 @@ public class SlidingWindowRateLimitTest {
     System.out.println(result);
 
     Assert.assertEquals(1, result.stream().filter(resp -> resp.passed()).count());
-    Assert.assertEquals(1, result.get(0).resetSeconds());
-    Assert.assertEquals(0, result.get(0).remaining());
+    Assert.assertEquals(5, result.get(0).details().get(0).reset());
+    Assert.assertEquals(0, result.get(0).details().get(0).remaining());
     Assert.assertTrue(result.get(0).passed());
 
-    Assert.assertEquals(1, result.get(1).resetSeconds());
-    Assert.assertEquals(0, result.get(1).remaining());
+    Assert.assertEquals(5, result.get(1).details().get(0).reset());
+    Assert.assertEquals(0, result.get(1).details().get(0).remaining());
     Assert.assertFalse(result.get(1).passed());
 
-    Assert.assertEquals(1, result.get(2).resetSeconds());
-    Assert.assertEquals(0, result.get(2).remaining());
+    Assert.assertEquals(5, result.get(2).details().get(0).reset());
+    Assert.assertEquals(0, result.get(2).details().get(0).remaining());
     Assert.assertFalse(result.get(2).passed());
 
-    Assert.assertEquals(1, result.get(3).resetSeconds());
-    Assert.assertEquals(0, result.get(3).remaining());
+    Assert.assertEquals(5, result.get(3).details().get(0).reset());
+    Assert.assertEquals(0, result.get(3).details().get(0).remaining());
     Assert.assertFalse(result.get(3).passed());
 
-    Assert.assertEquals(1, result.get(4).resetSeconds());
-    Assert.assertEquals(0, result.get(4).remaining());
+    Assert.assertEquals(5, result.get(4).details().get(0).reset());
+    Assert.assertEquals(0, result.get(4).details().get(0).remaining());
     Assert.assertFalse(result.get(4).passed());
 
-    Assert.assertEquals(1, result.get(5).resetSeconds());
-    Assert.assertEquals(0, result.get(5).remaining());
+    Assert.assertEquals(5, result.get(5).details().get(0).reset());
+    Assert.assertEquals(0, result.get(5).details().get(0).remaining());
     Assert.assertFalse(result.get(5).passed());
   }
 
@@ -113,12 +113,12 @@ public class SlidingWindowRateLimitTest {
     SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResult> result = new ArrayList<>();
+    List<LimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
-    SlidingWindowRateLimitOptions options =
-            new SlidingWindowRateLimitOptions(subject).setLimit(3).setInterval(5)
+    SlidingWindowRateLimitRule options =
+            new SlidingWindowRateLimitRule(subject).setLimit(3).setInterval(5)
                     .setPrecision(1);
-    for (int i = 0; i < 6; i ++) {
+    for (int i = 0; i < 10; i ++) {
       rateLimit.rateLimit(options, ar -> {
         if (ar.failed()) {
           testContext.fail();
@@ -133,33 +133,45 @@ public class SlidingWindowRateLimitTest {
         e.printStackTrace();
       }
     }
-    Awaitility.await().until(() -> req.get() == 6);
     System.out.println(result);
+    Awaitility.await().until(() -> req.get() == 10);
 
-    Assert.assertEquals(4, result.stream().filter(resp -> resp.passed()).count());
-    Assert.assertEquals(1, result.get(0).resetSeconds());
-    Assert.assertEquals(2, result.get(0).remaining());
+    Assert.assertEquals(6, result.stream().filter(resp -> resp.passed()).count());
+    Assert.assertEquals(5, result.get(0).details().get(0).reset());
+    Assert.assertEquals(2, result.get(0).details().get(0).remaining());
     Assert.assertTrue(result.get(0).passed());
 
-    Assert.assertEquals(1, result.get(1).resetSeconds());
-    Assert.assertEquals(1, result.get(1).remaining());
+    Assert.assertEquals(4, result.get(1).details().get(0).reset());
+    Assert.assertEquals(1, result.get(1).details().get(0).remaining());
     Assert.assertTrue(result.get(1).passed());
 
-    Assert.assertEquals(1, result.get(2).resetSeconds());
-    Assert.assertEquals(0, result.get(2).remaining());
+    Assert.assertEquals(3, result.get(2).details().get(0).reset());
+    Assert.assertEquals(0, result.get(2).details().get(0).remaining());
     Assert.assertTrue(result.get(2).passed());
 
-    Assert.assertEquals(1, result.get(3).resetSeconds());
-    Assert.assertEquals(0, result.get(3).remaining());
+    Assert.assertEquals(2, result.get(3).details().get(0).reset());
+    Assert.assertEquals(0, result.get(3).details().get(0).remaining());
     Assert.assertFalse(result.get(3).passed());
 
-    Assert.assertEquals(1, result.get(4).resetSeconds());
-    Assert.assertEquals(0, result.get(4).remaining());
+    Assert.assertEquals(1, result.get(4).details().get(0).reset());
+    Assert.assertEquals(0, result.get(4).details().get(0).remaining());
     Assert.assertFalse(result.get(4).passed());
 
-    Assert.assertEquals(1, result.get(5).resetSeconds());
-    Assert.assertEquals(0, result.get(5).remaining());
+    Assert.assertEquals(1, result.get(5).details().get(0).reset());
+    Assert.assertEquals(0, result.get(5).details().get(0).remaining());
     Assert.assertTrue(result.get(5).passed());
+
+    Assert.assertEquals(1, result.get(6).details().get(0).reset());
+    Assert.assertEquals(0, result.get(6).details().get(0).remaining());
+    Assert.assertTrue(result.get(6).passed());
+
+    Assert.assertEquals(3, result.get(7).details().get(0).reset());
+    Assert.assertEquals(0, result.get(7).details().get(0).remaining());
+    Assert.assertTrue(result.get(7).passed());
+
+    Assert.assertEquals(2, result.get(8).details().get(0).reset());
+    Assert.assertEquals(0, result.get(8).details().get(0).remaining());
+    Assert.assertFalse(result.get(8).passed());
   }
 
   @Test
@@ -176,10 +188,10 @@ public class SlidingWindowRateLimitTest {
     SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResult> result = new ArrayList<>();
+    List<LimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
-    SlidingWindowRateLimitOptions options =
-            new SlidingWindowRateLimitOptions(subject).setLimit(3).setInterval(5)
+    SlidingWindowRateLimitRule options =
+            new SlidingWindowRateLimitRule(subject).setLimit(3).setInterval(5)
                     .setPrecision(5);
     for (int i = 0; i < 14; i ++) {
       rateLimit.rateLimit(options, ar -> {
@@ -200,28 +212,28 @@ public class SlidingWindowRateLimitTest {
     System.out.println(result);
 
     Assert.assertEquals(9, result.stream().filter(resp -> resp.passed()).count());
-    Assert.assertEquals(5, result.get(0).resetSeconds());
-    Assert.assertEquals(2, result.get(0).remaining());
+    Assert.assertEquals(5, result.get(0).details().get(0).reset());
+    Assert.assertEquals(2, result.get(0).details().get(0).remaining());
     Assert.assertTrue(result.get(0).passed());
 
-    Assert.assertEquals(4, result.get(1).resetSeconds());
-    Assert.assertEquals(1, result.get(1).remaining());
+    Assert.assertEquals(4, result.get(1).details().get(0).reset());
+    Assert.assertEquals(1, result.get(1).details().get(0).remaining());
     Assert.assertTrue(result.get(1).passed());
 
-    Assert.assertEquals(3, result.get(2).resetSeconds());
-    Assert.assertEquals(0, result.get(2).remaining());
+    Assert.assertEquals(3, result.get(2).details().get(0).reset());
+    Assert.assertEquals(0, result.get(2).details().get(0).remaining());
     Assert.assertTrue(result.get(2).passed());
 
-    Assert.assertEquals(2, result.get(3).resetSeconds());
-    Assert.assertEquals(0, result.get(3).remaining());
+    Assert.assertEquals(2, result.get(3).details().get(0).reset());
+    Assert.assertEquals(0, result.get(3).details().get(0).remaining());
     Assert.assertFalse(result.get(3).passed());
 
-    Assert.assertEquals(1, result.get(4).resetSeconds());
-    Assert.assertEquals(0, result.get(4).remaining());
+    Assert.assertEquals(1, result.get(4).details().get(0).reset());
+    Assert.assertEquals(0, result.get(4).details().get(0).remaining());
     Assert.assertFalse(result.get(4).passed());
 
-    Assert.assertEquals(5, result.get(5).resetSeconds());
-    Assert.assertEquals(2, result.get(5).remaining());
+    Assert.assertEquals(5, result.get(5).details().get(0).reset());
+    Assert.assertEquals(2, result.get(5).details().get(0).remaining());
     Assert.assertTrue(result.get(5).passed());
   }
 }

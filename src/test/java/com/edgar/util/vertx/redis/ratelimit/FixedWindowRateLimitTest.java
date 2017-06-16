@@ -33,7 +33,7 @@ public class FixedWindowRateLimitTest {
   public void setUp() {
     vertx = Vertx.vertx();
     redisClient = RedisClient.create(vertx, new RedisOptions()
-        .setHost("127.0.0.1"));
+        .setHost("10.11.0.31"));
     AtomicBoolean complete = new AtomicBoolean();
     RedisDeletePattern.create(redisClient)
         .deleteByPattern("rate.limit*", ar -> {
@@ -56,9 +56,9 @@ public class FixedWindowRateLimitTest {
     FixedWindowRateLimit rateLimit = new FixedWindowRateLimit(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResult> result = new ArrayList<>();
+    List<LimitResult> result = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
-      rateLimit.rateLimit(new FixedWindowRateLimitOptions("test").setLimit(5).setInterval(8), ar -> {
+      rateLimit.rateLimit(new FixedWindowRateLimitRule("test").setLimit(5).setInterval(8), ar -> {
         req.incrementAndGet();
         result.add(ar.result());
       });
@@ -74,9 +74,9 @@ public class FixedWindowRateLimitTest {
 //      e.printStackTrace();
 //    }
     AtomicInteger req2 = new AtomicInteger();
-    List<RateLimitResult> result2 = new ArrayList<>();
+    List<LimitResult> result2 = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
-      rateLimit.rateLimit(new FixedWindowRateLimitOptions("test").setLimit(5).setInterval(8), ar -> {
+      rateLimit.rateLimit(new FixedWindowRateLimitRule("test").setLimit(5).setInterval(8), ar -> {
         req2.incrementAndGet();
         result2.add(ar.result());
       });
@@ -91,9 +91,9 @@ public class FixedWindowRateLimitTest {
       e.printStackTrace();
     }
     AtomicInteger req3 = new AtomicInteger();
-    List<RateLimitResult> result3 = new ArrayList<>();
+    List<LimitResult> result3 = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
-      rateLimit.rateLimit(new FixedWindowRateLimitOptions("test").setLimit(3).setInterval(5), ar -> {
+      rateLimit.rateLimit(new FixedWindowRateLimitRule("test").setLimit(3).setInterval(5), ar -> {
         req3.incrementAndGet();
         result3.add(ar.result());
       });

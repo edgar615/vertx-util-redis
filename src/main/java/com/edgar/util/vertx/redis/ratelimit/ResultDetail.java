@@ -1,9 +1,12 @@
 package com.edgar.util.vertx.redis.ratelimit;
 
 /**
- * Created by edgar on 17-5-31.
+ * Created by Edgar on 2017/6/16.
+ *
+ * @author Edgar  Date 2017/6/16
  */
-public class RateLimitResult {
+public class ResultDetail {
+  private final String subject;
 
   /**
    * 是否通过
@@ -24,17 +27,24 @@ public class RateLimitResult {
    * 限流窗口重置时间.
    * 因为时间戳包含各种有用但不必要的信息，例如日期和时区。API调用方只是想知道什么时候他们可以再次发送请求，使用秒数来回答这个问题，可以让调用方以最小的代价来处理。它也避免了时钟歪斜的问题
    */
-  private final long resetSeconds;
+  private final long reset;
 
-  private RateLimitResult(boolean passed, long limit, long remaining, long resetSeconds) {
+  private ResultDetail(String subject, boolean passed,
+                       long limit, long remaining, long reset) {
+    this.subject = subject;
     this.passed = passed;
     this.limit = limit;
     this.remaining = remaining;
-    this.resetSeconds = resetSeconds;
+    this.reset = reset;
   }
 
-  public static RateLimitResult create(boolean passed, long limit, long remaining, long resetSeconds) {
-    return new RateLimitResult(passed, limit, remaining, resetSeconds);
+  public static ResultDetail create(String subject, boolean passed,
+                                    long limit, long remaining, long reset) {
+    return new ResultDetail(subject, passed, limit, remaining, reset);
+  }
+
+  public String subject() {
+    return subject;
   }
 
   public boolean passed() {
@@ -49,17 +59,18 @@ public class RateLimitResult {
     return remaining;
   }
 
-  public long resetSeconds() {
-    return resetSeconds;
+  public long reset() {
+    return reset;
   }
 
   @Override
   public String toString() {
-    return "RateLimitResult{" +
-        "passed=" + passed +
-        ", limit=" + limit +
-        ", remaining=" + remaining +
-        ", resetSeconds=" + resetSeconds +
-        '}';
+    return "ResultDetail{" +
+           "subject=" + subject +
+           ",passed=" + passed +
+           ", limit=" + limit +
+           ", remaining=" + remaining +
+           ", reset=" + reset +
+           '}';
   }
 }

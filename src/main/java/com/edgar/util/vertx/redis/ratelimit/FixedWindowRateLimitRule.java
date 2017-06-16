@@ -3,7 +3,7 @@ package com.edgar.util.vertx.redis.ratelimit;
 /**
  * Created by edgar on 17-5-28.
  */
-public class FixedWindowRateLimitOptions {
+public class FixedWindowRateLimitRule {
 
   private static final long DEFAULT_INTERVAL = 1;
 
@@ -24,7 +24,7 @@ public class FixedWindowRateLimitOptions {
    */
   private final String subject;
 
-  public FixedWindowRateLimitOptions(String subject) {
+  public FixedWindowRateLimitRule(String subject) {
     this.subject = subject;
   }
 
@@ -32,7 +32,7 @@ public class FixedWindowRateLimitOptions {
     return limit;
   }
 
-  public FixedWindowRateLimitOptions setLimit(long limit) {
+  public FixedWindowRateLimitRule setLimit(long limit) {
     this.limit = limit;
     return this;
   }
@@ -41,7 +41,7 @@ public class FixedWindowRateLimitOptions {
     return interval;
   }
 
-  public FixedWindowRateLimitOptions setInterval(long interval) {
+  public FixedWindowRateLimitRule setInterval(long interval) {
     this.interval = interval;
     return this;
   }

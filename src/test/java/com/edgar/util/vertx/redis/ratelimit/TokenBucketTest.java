@@ -42,7 +42,7 @@ public class TokenBucketTest {
   }
 
   @Test
-  public void testBucket3ReqPer5sWith1500Refill(TestContext testContext) {
+  public void testBucket3Refill1In2000(TestContext testContext) {
     AtomicBoolean complete = new AtomicBoolean();
     Future<Void> future = Future.future();
     future.setHandler(ar -> {
@@ -55,13 +55,14 @@ public class TokenBucketTest {
     TokenBucket tokenBucket = new TokenBucket(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResult> result = new ArrayList<>();
+    List<LimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
-    TokenBucketOptions options =
-        new TokenBucketOptions(subject).setMaxAmount(3)
+    TokenBucketRule options =
+        new TokenBucketRule(subject).setBurst(3)
                 .setRefillTime(2000);
     tokenBucket.tokenBucket(3, options, ar -> {
       if (ar.failed()) {
+        ar.cause().printStackTrace();
         testContext.fail();
       } else {
         req.incrementAndGet();
@@ -97,34 +98,20 @@ public class TokenBucketTest {
     Awaitility.await().until(() -> req.get() == 3);
     System.out.println(result);
 
-    Assert.assertEquals(1, result.stream().filter(resp -> resp.passed()).count());
-    Assert.assertEquals(1, result.get(0).resetSeconds());
-    Assert.assertEquals(0, result.get(0).remaining());
+    Assert.assertEquals(2, result.stream().filter(resp -> resp.passed()).count());
+    Assert.assertEquals(0, result.get(0).details().get(0).remaining());
     Assert.assertTrue(result.get(0).passed());
 
-    Assert.assertEquals(1, result.get(1).resetSeconds());
-    Assert.assertEquals(0, result.get(1).remaining());
+    Assert.assertEquals(0, result.get(1).details().get(0).remaining());
     Assert.assertFalse(result.get(1).passed());
 
-    Assert.assertEquals(1, result.get(2).resetSeconds());
-    Assert.assertEquals(0, result.get(2).remaining());
-    Assert.assertFalse(result.get(2).passed());
+    Assert.assertEquals(0, result.get(2).details().get(0).remaining());
+    Assert.assertTrue(result.get(2).passed());
 
-    Assert.assertEquals(1, result.get(3).resetSeconds());
-    Assert.assertEquals(0, result.get(3).remaining());
-    Assert.assertFalse(result.get(3).passed());
-
-    Assert.assertEquals(1, result.get(4).resetSeconds());
-    Assert.assertEquals(0, result.get(4).remaining());
-    Assert.assertFalse(result.get(4).passed());
-
-    Assert.assertEquals(1, result.get(5).resetSeconds());
-    Assert.assertEquals(0, result.get(5).remaining());
-    Assert.assertFalse(result.get(5).passed());
   }
 
   @Test
-  public void testRateLimit3ReqPer5sWith1sPrecision(TestContext testContext) {
+  public void testBucket3Refill3In2000(TestContext testContext) {
     AtomicBoolean complete = new AtomicBoolean();
     Future<Void> future = Future.future();
     future.setHandler(ar -> {
@@ -134,118 +121,62 @@ public class TokenBucketTest {
         complete.set(false);
       }
     });
-    SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
+    TokenBucket tokenBucket = new TokenBucket(vertx, redisClient, future);
     Awaitility.await().until(() -> complete.get());
     AtomicInteger req = new AtomicInteger();
-    List<RateLimitResult> result = new ArrayList<>();
+    List<LimitResult> result = new ArrayList<>();
     String subject = UUID.randomUUID().toString();
-    SlidingWindowRateLimitOptions options =
-            new SlidingWindowRateLimitOptions(subject).setLimit(3).setInterval(5)
-                    .setPrecision(1);
-    for (int i = 0; i < 6; i ++) {
-      rateLimit.rateLimit(options, ar -> {
-        if (ar.failed()) {
-          testContext.fail();
-        } else {
-          req.incrementAndGet();
-          result.add(ar.result());
-        }
-      });
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    Awaitility.await().until(() -> req.get() == 6);
-    System.out.println(result);
-
-    Assert.assertEquals(4, result.stream().filter(resp -> resp.passed()).count());
-    Assert.assertEquals(1, result.get(0).resetSeconds());
-    Assert.assertEquals(2, result.get(0).remaining());
-    Assert.assertTrue(result.get(0).passed());
-
-    Assert.assertEquals(1, result.get(1).resetSeconds());
-    Assert.assertEquals(1, result.get(1).remaining());
-    Assert.assertTrue(result.get(1).passed());
-
-    Assert.assertEquals(1, result.get(2).resetSeconds());
-    Assert.assertEquals(0, result.get(2).remaining());
-    Assert.assertTrue(result.get(2).passed());
-
-    Assert.assertEquals(1, result.get(3).resetSeconds());
-    Assert.assertEquals(0, result.get(3).remaining());
-    Assert.assertFalse(result.get(3).passed());
-
-    Assert.assertEquals(1, result.get(4).resetSeconds());
-    Assert.assertEquals(0, result.get(4).remaining());
-    Assert.assertFalse(result.get(4).passed());
-
-    Assert.assertEquals(1, result.get(5).resetSeconds());
-    Assert.assertEquals(0, result.get(5).remaining());
-    Assert.assertTrue(result.get(5).passed());
-  }
-
-  @Test
-  public void testRateLimit3ReqPer5sWith5sPrecision(TestContext testContext) {
-    AtomicBoolean complete = new AtomicBoolean();
-    Future<Void> future = Future.future();
-    future.setHandler(ar -> {
-      if (ar.succeeded()) {
-        complete.set(true);
+    TokenBucketRule options =
+            new TokenBucketRule(subject).setBurst(3)
+                    .setRefillAmount(3)
+                    .setRefillTime(2000);
+    tokenBucket.tokenBucket(3, options, ar -> {
+      if (ar.failed()) {
+        ar.cause().printStackTrace();
+        testContext.fail();
       } else {
-        complete.set(false);
+        req.incrementAndGet();
+        result.add(ar.result());
       }
     });
-    SlidingWindowRateLimit rateLimit = new SlidingWindowRateLimit(vertx, redisClient, future);
-    Awaitility.await().until(() -> complete.get());
-    AtomicInteger req = new AtomicInteger();
-    List<RateLimitResult> result = new ArrayList<>();
-    String subject = UUID.randomUUID().toString();
-    SlidingWindowRateLimitOptions options =
-            new SlidingWindowRateLimitOptions(subject).setLimit(3).setInterval(5)
-                    .setPrecision(5);
-    for (int i = 0; i < 14; i ++) {
-      rateLimit.rateLimit(options, ar -> {
-        if (ar.failed()) {
-          testContext.fail();
-        } else {
-          req.incrementAndGet();
-          result.add(ar.result());
-        }
-      });
-      try {
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+    try {
+      TimeUnit.SECONDS.sleep(1);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
-    Awaitility.await().until(() -> req.get() == 14);
+    tokenBucket.tokenBucket(1, options, ar -> {
+      if (ar.failed()) {
+        testContext.fail();
+      } else {
+        req.incrementAndGet();
+        result.add(ar.result());
+      }
+    });
+    try {
+      TimeUnit.SECONDS.sleep(2);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    tokenBucket.tokenBucket(1, options, ar -> {
+      if (ar.failed()) {
+        testContext.fail();
+      } else {
+        req.incrementAndGet();
+        result.add(ar.result());
+      }
+    });
+    Awaitility.await().until(() -> req.get() == 3);
     System.out.println(result);
 
-    Assert.assertEquals(9, result.stream().filter(resp -> resp.passed()).count());
-    Assert.assertEquals(5, result.get(0).resetSeconds());
-    Assert.assertEquals(2, result.get(0).remaining());
+    Assert.assertEquals(2, result.stream().filter(resp -> resp.passed()).count());
+    Assert.assertEquals(0, result.get(0).details().get(0).remaining());
     Assert.assertTrue(result.get(0).passed());
 
-    Assert.assertEquals(4, result.get(1).resetSeconds());
-    Assert.assertEquals(1, result.get(1).remaining());
-    Assert.assertTrue(result.get(1).passed());
+    Assert.assertEquals(0, result.get(1).details().get(0).remaining());
+    Assert.assertFalse(result.get(1).passed());
 
-    Assert.assertEquals(3, result.get(2).resetSeconds());
-    Assert.assertEquals(0, result.get(2).remaining());
+    Assert.assertEquals(2, result.get(2).details().get(0).remaining());
     Assert.assertTrue(result.get(2).passed());
 
-    Assert.assertEquals(2, result.get(3).resetSeconds());
-    Assert.assertEquals(0, result.get(3).remaining());
-    Assert.assertFalse(result.get(3).passed());
-
-    Assert.assertEquals(1, result.get(4).resetSeconds());
-    Assert.assertEquals(0, result.get(4).remaining());
-    Assert.assertFalse(result.get(4).passed());
-
-    Assert.assertEquals(5, result.get(5).resetSeconds());
-    Assert.assertEquals(2, result.get(5).remaining());
-    Assert.assertTrue(result.get(5).passed());
   }
 }

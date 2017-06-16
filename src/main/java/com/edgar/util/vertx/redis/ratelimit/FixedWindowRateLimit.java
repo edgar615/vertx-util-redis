@@ -29,7 +29,7 @@ public class FixedWindowRateLimit extends AbstractLuaEvaluator {
    * @param rateLimit 限流设置
    * @param handler　回调
    */
-  public void rateLimit(FixedWindowRateLimitOptions rateLimit, Handler<AsyncResult<RateLimitResult>> handler) {
+  public void rateLimit(FixedWindowRateLimitRule rateLimit, Handler<AsyncResult<LimitResult>> handler) {
     List<String> keys = new ArrayList<>();
     List<String> args = new ArrayList<>();
     args.add(rateLimit.getSubject());
@@ -42,7 +42,9 @@ public class FixedWindowRateLimit extends AbstractLuaEvaluator {
         handler.handle(Future.failedFuture("rateLimit failed"));;
         return;
       }
-      RateLimitUtils.create(ar.result(), handler);
+      List<String> subjects = new ArrayList<>();
+      subjects.add(rateLimit.getSubject());
+      RateLimitUtils.createResult(ar.result(), subjects, handler);
     });
   }
 

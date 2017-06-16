@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by edgar on 17-5-29.
@@ -28,13 +29,14 @@ public class MultiFixedWIndowRateLimit extends AbstractLuaEvaluator {
   /**
    * 限流
    *
-   * @param limits  限流集合，必须包含三个元素:subject，limit,interval
+   * @param rules  限流集合，必须包含三个元素:subject，limit,interval
    * @param handler 　回调
    */
-  public void rateLimit(List<FixedWindowRateLimitOptions> limits, Handler<AsyncResult<RateLimitResult>> handler) {
+  public void rateLimit(List<FixedWindowRateLimitRule> rules,
+                        Handler<AsyncResult<LimitResult>> handler) {
     JsonArray limitArray;
     try {
-      limitArray = checkArgument(limits);
+      limitArray = checkArgument(rules);
     } catch (Exception e) {
       handler.handle(Future.failedFuture(e));
       return;
@@ -49,17 +51,20 @@ public class MultiFixedWIndowRateLimit extends AbstractLuaEvaluator {
         handler.handle(Future.failedFuture("rateLimit failed"));
         return;
       }
-      RateLimitUtils.create(ar.result(), handler);
+      List<String> subjects = rules.stream()
+              .map(l -> l.getSubject())
+              .collect(Collectors.toList());
+      RateLimitUtils.createResult(ar.result(), subjects, handler);
     });
   }
 
-  private JsonArray checkArgument(List<FixedWindowRateLimitOptions> limits) {
+  private JsonArray checkArgument(List<FixedWindowRateLimitRule> limits) {
     if (limits.size() == 0) {
       throw new IllegalArgumentException("limits cannot empty");
     }
     JsonArray limitArray = new JsonArray();
     for (int i = 0; i < limits.size(); i++) {
-      FixedWindowRateLimitOptions limit = limits.get(i);
+      FixedWindowRateLimitRule limit = limits.get(i);
       try {
         limitArray.add(new JsonArray().add(limit.getSubject())
             .add(limit.getLimit())
