@@ -95,7 +95,21 @@ public class TokenBucketTest {
         result.add(ar.result());
       }
     });
-    Awaitility.await().until(() -> req.get() == 3);
+
+    try {
+      TimeUnit.SECONDS.sleep(3);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    tokenBucket.tokenBucket(1, options, ar -> {
+      if (ar.failed()) {
+        testContext.fail();
+      } else {
+        req.incrementAndGet();
+        result.add(ar.result());
+      }
+    });
+    Awaitility.await().until(() -> req.get() == 4);
     System.out.println(result);
 
     Assert.assertEquals(2, result.stream().filter(resp -> resp.passed()).count());
@@ -106,8 +120,10 @@ public class TokenBucketTest {
     Assert.assertFalse(result.get(1).passed());
 
     Assert.assertEquals(0, result.get(2).details().get(0).remaining());
-    Assert.assertTrue(result.get(2).passed());
+    Assert.assertFalse(result.get(2).passed());
 
+    Assert.assertEquals(2, result.get(3).details().get(0).remaining());
+    Assert.assertTrue(result.get(3).passed());
   }
 
   @Test
@@ -153,7 +169,7 @@ public class TokenBucketTest {
       }
     });
     try {
-      TimeUnit.SECONDS.sleep(2);
+      TimeUnit.SECONDS.sleep(1);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -178,5 +194,90 @@ public class TokenBucketTest {
     Assert.assertEquals(2, result.get(2).details().get(0).remaining());
     Assert.assertTrue(result.get(2).passed());
 
+  }
+
+  @Test
+  public void testBurst(TestContext testContext) {
+    AtomicBoolean complete = new AtomicBoolean();
+    Future<Void> future = Future.future();
+    future.setHandler(ar -> {
+      if (ar.succeeded()) {
+        complete.set(true);
+      } else {
+        complete.set(false);
+      }
+    });
+    TokenBucket tokenBucket = new TokenBucket(vertx, redisClient, future);
+    Awaitility.await().until(() -> complete.get());
+    AtomicInteger req = new AtomicInteger();
+    List<LimitResult> result = new ArrayList<>();
+    String subject = UUID.randomUUID().toString();
+    TokenBucketRule options =
+            new TokenBucketRule(subject).setBurst(3)
+                    .setRefillTime(2000);
+    tokenBucket.tokenBucket(1, options, ar -> {
+      if (ar.failed()) {
+        ar.cause().printStackTrace();
+        testContext.fail();
+      } else {
+        req.incrementAndGet();
+        result.add(ar.result());
+      }
+    });
+    try {
+      TimeUnit.SECONDS.sleep(1);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    tokenBucket.tokenBucket(2, options, ar -> {
+      if (ar.failed()) {
+        testContext.fail();
+      } else {
+        req.incrementAndGet();
+        result.add(ar.result());
+      }
+    });
+    try {
+      TimeUnit.SECONDS.sleep(2);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    tokenBucket.tokenBucket(1, options, ar -> {
+      if (ar.failed()) {
+        testContext.fail();
+      } else {
+        req.incrementAndGet();
+        result.add(ar.result());
+      }
+    });
+
+    try {
+      TimeUnit.SECONDS.sleep(3);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    tokenBucket.tokenBucket(1, options, ar -> {
+      if (ar.failed()) {
+        testContext.fail();
+      } else {
+        req.incrementAndGet();
+        result.add(ar.result());
+      }
+    });
+    Awaitility.await().until(() -> req.get() == 4);
+    System.out.println(result);
+
+    Assert.assertEquals(2, result.stream().filter(resp -> resp.passed()).count());
+    Assert.assertEquals(0, result.get(0).details().get(0).remaining());
+    Assert.assertTrue(result.get(0).passed());
+
+    Assert.assertEquals(0, result.get(1).details().get(0).remaining());
+    Assert.assertFalse(result.get(1).passed());
+
+    Assert.assertEquals(0, result.get(2).details().get(0).remaining());
+    Assert.assertFalse(result.get(2).passed());
+
+    Assert.assertEquals(2, result.get(3).details().get(0).remaining());
+    Assert.assertFalse(result.get(3).passed());
   }
 }
