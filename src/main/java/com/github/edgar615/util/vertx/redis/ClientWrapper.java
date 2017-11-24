@@ -7,6 +7,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.redis.RedisClient;
 import io.vertx.redis.RedisTransaction;
+import io.vertx.redis.Script;
 import io.vertx.redis.op.*;
 
 import java.util.List;
@@ -205,14 +206,14 @@ public class ClientWrapper implements RedisClient {
 
   @Override
   public RedisClient clusterForget(String nodeId, Handler<AsyncResult<Void>> handler) {
-    client. clusterForget(nodeId, handler);
+    client.clusterForget(nodeId, handler);
     return this;
   }
 
   @Override
   public RedisClient clusterGetkeysinslot(long slot, long count,
                                           Handler<AsyncResult<JsonArray>> handler) {
-    client. clusterGetkeysinslot(slot, count, handler);
+    client.clusterGetkeysinslot(slot, count, handler);
     return this;
   }
 
@@ -224,13 +225,13 @@ public class ClientWrapper implements RedisClient {
 
   @Override
   public RedisClient clusterKeyslot(String key, Handler<AsyncResult<Long>> handler) {
-    client. clusterKeyslot(key, handler);
+    client.clusterKeyslot(key, handler);
     return this;
   }
 
   @Override
   public RedisClient clusterMeet(String ip, long port, Handler<AsyncResult<Void>> handler) {
-    client. clusterMeet(ip, port, handler);
+    client.clusterMeet(ip, port, handler);
     return this;
   }
 
@@ -411,6 +412,13 @@ public class ClientWrapper implements RedisClient {
   public RedisClient evalsha(String sha1, List<String> keys, List<String> values,
                              Handler<AsyncResult<JsonArray>> handler) {
     client.evalsha(sha1, keys, values, handler);
+    return this;
+  }
+
+  @Override
+  public RedisClient evalScript(Script script, List<String> list, List<String> list1,
+                                Handler<AsyncResult<JsonArray>> handler) {
+    client.evalScript(script, list, list1, handler);
     return this;
   }
 
@@ -1535,6 +1543,24 @@ public class ClientWrapper implements RedisClient {
                                           BitFieldOverflowOptions overflow,
                                           Handler<AsyncResult<JsonArray>> handler) {
     client.bitfieldWithOverflow(key, commands, overflow, handler);
+    return this;
+  }
+
+  @Override
+  public RedisClient unlink(String s, Handler<AsyncResult<Long>> handler) {
+    client.unlink(s, handler);
+    return this;
+  }
+
+  @Override
+  public RedisClient unlinkMany(List<String> list, Handler<AsyncResult<Long>> handler) {
+    client.unlinkMany(list, handler);
+    return this;
+  }
+
+  @Override
+  public RedisClient swapdb(int i, int i1, Handler<AsyncResult<String>> handler) {
+    client.swapdb(i, i1, handler);
     return this;
   }
 

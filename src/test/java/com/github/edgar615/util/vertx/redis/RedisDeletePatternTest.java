@@ -5,6 +5,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.redis.RedisClient;
+import io.vertx.redis.RedisOptions;
 import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +27,8 @@ public class RedisDeletePatternTest {
   @Before
   public void setUp() {
       vertx = Vertx.vertx();
-    redisClient = RedisClient.create(vertx);
+    RedisOptions redisOptions = new RedisOptions();
+    redisClient = RedisClient.create(vertx, redisOptions);
   }
 
   @Test
