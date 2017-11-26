@@ -27,7 +27,8 @@ public class RedisDeletePatternTest {
   @Before
   public void setUp() {
       vertx = Vertx.vertx();
-    RedisOptions redisOptions = new RedisOptions();
+    RedisOptions redisOptions = new RedisOptions()
+            .setHost("120.76.158.7");
     redisClient = RedisClient.create(vertx, redisOptions);
   }
 
@@ -42,7 +43,7 @@ public class RedisDeletePatternTest {
             testContext.fail();
             return;
           }
-          testContext.assertEquals(0l, ar.result());
+          testContext.assertEquals(0, ar.result());
           async.complete();
         });
   }
@@ -72,7 +73,7 @@ public class RedisDeletePatternTest {
             testContext.fail();
             return;
           }
-          testContext.assertEquals(2l, ar.result());
+          testContext.assertEquals(2, ar.result());
           async.complete();
         });
   }
