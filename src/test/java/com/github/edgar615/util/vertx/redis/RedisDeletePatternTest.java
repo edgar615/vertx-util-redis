@@ -27,8 +27,7 @@ public class RedisDeletePatternTest {
   @Before
   public void setUp() {
       vertx = Vertx.vertx();
-    RedisOptions redisOptions = new RedisOptions()
-            .setHost("120.76.158.7");
+    RedisOptions redisOptions = new RedisOptions();
     redisClient = RedisClient.create(vertx, redisOptions);
   }
 
